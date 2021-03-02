@@ -1,8 +1,8 @@
 package main
 
 import (
-    "fmt"
 	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -109,7 +109,7 @@ func wrapHandlerWithVars(h http.Handler, vars []*pathVar, path string) http.Hand
 			loc := v.pattern.FindStringIndex(path)
 			ctx = context.WithValue(ctx, v.name, path[loc[0]:loc[1]])
 			path = path[loc[1]:]
-            fmt.Println(path)
+			fmt.Println(path)
 		}
 		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
@@ -126,7 +126,7 @@ func (rt *Router) lookupHandler(req *http.Request) http.Handler {
 			for _, e := range r.execs {
 				if e.method == req.Method || e.method == "ALL" {
 					methodAllowed = true
-                    h = wrapHandlerWithVars(e.handler, r.vars, req.URL.Path)
+					h = wrapHandlerWithVars(e.handler, r.vars, req.URL.Path)
 					break
 				}
 			}
