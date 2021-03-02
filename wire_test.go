@@ -68,12 +68,7 @@ func doRequest(t testing.TB, method string, url string) (*http.Response, error) 
 
 	cli := &http.Client{}
 
-	req, err := http.NewRequestWithContext(
-		context.TODO(),
-		method,
-		url,
-		nil,
-	)
+	req, err := http.NewRequestWithContext(context.TODO(), method, url, nil)
 	if err != nil {
 		return nil, err
 	}

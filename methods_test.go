@@ -2,10 +2,9 @@ package wire
 
 import (
 	"net/http"
-    "net/http/httptest"
-    "testing"
+	"net/http/httptest"
+	"testing"
 )
-
 
 func TestRoutingMethods(t *testing.T) {
 
@@ -55,19 +54,19 @@ func TestRoutingMethods(t *testing.T) {
 
 	r := NewRouter()
 
-    testF := func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusOK)
-    }
-    testH := http.HandlerFunc(testF)
+	testF := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+	testH := http.HandlerFunc(testF)
 
-    r.Get("/h", testH)
-    r.Post("/h", testH)
+	r.Get("/h", testH)
+	r.Post("/h", testH)
 
-    r.GetF("/f", testF)
-    r.PostF("/f", testF)
+	r.GetF("/f", testF)
+	r.PostF("/f", testF)
 
-    r.All("/ah", testH)
-    r.AllF("/af", testF)
+	r.All("/ah", testH)
+	r.AllF("/af", testF)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
