@@ -40,40 +40,40 @@ func (rt *Router) Chain(middlewares ...func(http.Handler) http.Handler) {
 	}
 }
 
-var nRgxp = regexp.MustCompile(`\((.*?):`)
+var (
+	nRgxp = regexp.MustCompile(`([^\(]*?):`)
+	fRgxp = regexp.MustCompile(`\(.*?\)`)
+)
 
-func (rt *Router) normalizePath(path string) string {
-	path = nRgxp.ReplaceAllString(path, "(")
-	// if path[len(path)-1:] != "/" {
-	// 	path += "$"
-	// }
+func normalizePath(path string) string {
+	path = nRgxp.ReplaceAllString(path, "")
 	return path
 }
 
-var fRgxp = regexp.MustCompile(`\(.*?\)`)
+func (rt *Router) analyzePath(path string, method string) (*regexp.Regexp, []*pathVar) {
+	normalizedPath := normalizePath(path)
 
-func (rt *Router) findPathVars(path string) []*pathVar {
-	nPath := rt.normalizePath(path)
+	exactMatchSuffix := "$"
+	if method == "ALL" {
+		exactMatchSuffix = ""
+	}
+	pattern := regexp.MustCompile("^" + rt.prefix + normalizedPath + exactMatchSuffix)
 
 	nms := nRgxp.FindAllStringSubmatch(path, -1)
-	fms := fRgxp.FindAllStringSubmatch(nPath, -1)
+	fms := fRgxp.FindAllStringSubmatch(normalizedPath, -1)
 
 	var vars []*pathVar
 	for i, fm := range fms {
 		vars = append(vars, &pathVar{nms[i][1], regexp.MustCompile(fm[0])})
 	}
 
-	return vars
+	return pattern, vars
 }
 
 func (rt *Router) registerHandler(path string, method string, h http.Handler) {
 
 	re := &routeExec{method: method, handler: h}
-
-	nPath := rt.normalizePath(path)
-	pattern := regexp.MustCompile("^" + rt.prefix + nPath)
-
-	pathVars := rt.findPathVars(path)
+	pattern, pathVars := rt.analyzePath(path, method)
 
 	var pathExists bool
 	for _, r := range rt.routes {
@@ -152,7 +152,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) SubRouter(path string) *Router {
 	nwi := NewRouter()
-	nwi.prefix = rt.prefix + rt.normalizePath(path)
-	rt.registerHandler(path+"/", "ALL", nwi)
+	nwi.prefix = rt.prefix + normalizePath(path)
+	rt.registerHandler(path, "ALL", nwi)
 	return nwi
 }
