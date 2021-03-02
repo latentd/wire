@@ -36,21 +36,20 @@ func t2(w http.ResponseWriter, r *http.Request) {
 	s2, ok := v2.(string)
 	fmt.Println(ok)
 
-	w.Write([]byte(s + s2))
+	w.Write([]byte(s + " " + s2))
 }
 
 func main() {
 
-	w := NewWire()
+	r := NewRouter()
 
-	w.Chain(l1, l2)
-	w.Get("/test", t())
+	r.Chain(l1, l2)
+	r.Get("/test", t())
 
-	w2 := w.SubRouter("/api/(id:[1-9]+)")
+	r2 := r.SubRouter("/api")
 
-	w3 := w2.SubRouter("/action")
-	w3.GetF("/(nid:[1-9]+)", t2)
+	r2.GetF("/(id:[1-9]+)/action/(nid:[1-9]+)", t2)
 	//r2.GetF("/a/(id:[1-9]+)/b/(nid:[1-9]+)/c", t2)
 
-	http.ListenAndServe(":8080", w)
+	http.ListenAndServe(":8080", r)
 }

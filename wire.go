@@ -1,13 +1,14 @@
 package main
 
 import (
+    "fmt"
 	"context"
 	"net/http"
 	"reflect"
 	"regexp"
 )
 
-type Wire struct {
+type Router struct {
 	prefix      string
 	routes      []*route
 	middlewares []func(http.Handler) http.Handler
@@ -29,19 +30,19 @@ type routeExec struct {
 	handler http.Handler
 }
 
-func NewWire() *Wire {
-	return &Wire{}
+func NewRouter() *Router {
+	return &Router{}
 }
 
-func (wi *Wire) Chain(middlewares ...func(http.Handler) http.Handler) {
+func (rt *Router) Chain(middlewares ...func(http.Handler) http.Handler) {
 	for i := len(middlewares) - 1; i >= 0; i-- {
-		wi.middlewares = append(wi.middlewares, middlewares[i])
+		rt.middlewares = append(rt.middlewares, middlewares[i])
 	}
 }
 
 var nRgxp = regexp.MustCompile(`\((.*?):`)
 
-func (wi *Wire) normalizePath(path string) string {
+func (rt *Router) normalizePath(path string) string {
 	path = nRgxp.ReplaceAllString(path, "(")
 	// if path[len(path)-1:] != "/" {
 	// 	path += "$"
@@ -51,8 +52,8 @@ func (wi *Wire) normalizePath(path string) string {
 
 var fRgxp = regexp.MustCompile(`\(.*?\)`)
 
-func (wi *Wire) findPathVars(path string) []*pathVar {
-	nPath := wi.normalizePath(path)
+func (rt *Router) findPathVars(path string) []*pathVar {
+	nPath := rt.normalizePath(path)
 
 	nms := nRgxp.FindAllStringSubmatch(path, -1)
 	fms := fRgxp.FindAllStringSubmatch(nPath, -1)
@@ -65,25 +66,25 @@ func (wi *Wire) findPathVars(path string) []*pathVar {
 	return vars
 }
 
-func (wi *Wire) registerHandler(path string, method string, h http.Handler) {
+func (rt *Router) registerHandler(path string, method string, h http.Handler) {
 
 	re := &routeExec{method: method, handler: h}
 
-	nPath := wi.normalizePath(path)
-	pattern := regexp.MustCompile("^" + wi.prefix + nPath)
+	nPath := rt.normalizePath(path)
+	pattern := regexp.MustCompile("^" + rt.prefix + nPath)
 
-	pathVars := wi.findPathVars(path)
+	pathVars := rt.findPathVars(path)
 
 	var pathExists bool
-	for _, r := range wi.routes {
+	for _, r := range rt.routes {
 		if reflect.DeepEqual(r.pattern, pattern) {
 			r.execs = append(r.execs, re)
 			pathExists = true
 		}
 	}
 	if !pathExists {
-		wi.routes = append(
-			wi.routes,
+		rt.routes = append(
+			rt.routes,
 			&route{
 				pattern,
 				pathVars,
@@ -108,23 +109,24 @@ func wrapHandlerWithVars(h http.Handler, vars []*pathVar, path string) http.Hand
 			loc := v.pattern.FindStringIndex(path)
 			ctx = context.WithValue(ctx, v.name, path[loc[0]:loc[1]])
 			path = path[loc[1]:]
+            fmt.Println(path)
 		}
 		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
 	})
 }
 
-func (wi *Wire) lookupHandler(req *http.Request) http.Handler {
+func (rt *Router) lookupHandler(req *http.Request) http.Handler {
 	var h http.Handler
 
 	var pathFound, methodAllowed bool
-	for _, r := range wi.routes {
+	for _, r := range rt.routes {
 		if r.pattern.MatchString(req.URL.Path) {
 			pathFound = true
 			for _, e := range r.execs {
 				if e.method == req.Method || e.method == "ALL" {
 					methodAllowed = true
-					h = wrapHandlerWithVars(e.handler, r.vars, req.URL.Path)
+                    h = wrapHandlerWithVars(e.handler, r.vars, req.URL.Path)
 					break
 				}
 			}
@@ -140,17 +142,17 @@ func (wi *Wire) lookupHandler(req *http.Request) http.Handler {
 	return h
 }
 
-func (wi *Wire) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h := wi.lookupHandler(r)
-	for _, m := range wi.middlewares {
+func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h := rt.lookupHandler(r)
+	for _, m := range rt.middlewares {
 		h = m(h)
 	}
 	h.ServeHTTP(w, r)
 }
 
-func (wi *Wire) SubRouter(path string) *Wire {
-	nwi := NewWire()
-	nwi.prefix = wi.prefix + wi.normalizePath(path)
-	wi.registerHandler(path+"/", "ALL", nwi)
+func (rt *Router) SubRouter(path string) *Router {
+	nwi := NewRouter()
+	nwi.prefix = rt.prefix + rt.normalizePath(path)
+	rt.registerHandler(path+"/", "ALL", nwi)
 	return nwi
 }
