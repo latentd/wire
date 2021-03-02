@@ -100,8 +100,6 @@ func handlerWithStatus(status int) http.Handler {
 	})
 }
 
-var aNorm = regexp.MustCompile(`\((.*?)\)`)
-
 func wrapHandlerWithVars(h http.Handler, vars []*pathVar, path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

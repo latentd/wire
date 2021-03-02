@@ -7,38 +7,7 @@ import (
 	"testing"
 )
 
-func assertStatusCode(t testing.TB, want int, got int) {
-	t.Helper()
-
-	if want != got {
-		t.Errorf("got %d, want %d", got, want)
-	}
-}
-
-func doRequest(t testing.TB, method string, url string) (*http.Response, error) {
-	t.Helper()
-
-	cli := &http.Client{}
-
-	req, err := http.NewRequestWithContext(
-		context.TODO(),
-		method,
-		url,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := cli.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func TestRootRouting(t *testing.T) {
+func TestRoutingRoot(t *testing.T) {
 
 	tts := []struct {
 		name   string
@@ -82,9 +51,37 @@ func TestRootRouting(t *testing.T) {
 				t.Fatal(err)
 			}
 			assertStatusCode(t, res.StatusCode, tt.want)
-
 		})
+	}
+}
 
+func assertStatusCode(t testing.TB, got int, want int) {
+	t.Helper()
+
+	if want != got {
+		t.Errorf("got %d, want %d", got, want)
+	}
+}
+
+func doRequest(t testing.TB, method string, url string) (*http.Response, error) {
+	t.Helper()
+
+	cli := &http.Client{}
+
+	req, err := http.NewRequestWithContext(
+		context.TODO(),
+		method,
+		url,
+		nil,
+	)
+	if err != nil {
+		return nil, err
 	}
 
+	res, err := cli.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
