@@ -14,11 +14,13 @@ go get -u github.com/latentd/wire
 func main() {
     r := wire.NewRouter()
 
-    // register handler
-    r.Get("/", handler)
-
     // use middleware
     r.Chain(middleware1, middleware2)
+
+    // register handler
+    r.Get("/", handler)
+    // or
+    r.GetF("/", handlerFunc)
 
     // create sub router
     sr := r.SubRouter("/sub")
