@@ -2,7 +2,6 @@ package wire
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -103,13 +102,18 @@ func handlerWithStatus(status int) http.Handler {
 func wrapHandlerWithVars(h http.Handler, vars []*pathVar, path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
+		var keys []string
 		for _, v := range vars {
 			loc := v.pattern.FindStringIndex(path)
 			ctx = context.WithValue(ctx, v.name, path[loc[0]:loc[1]])
+			keys = append(keys, v.name)
 			path = path[loc[1]:]
-			fmt.Println(path)
 		}
+
+		ctx = context.WithValue(ctx, "wireValKeys", keys)
 		r = r.WithContext(ctx)
+
 		h.ServeHTTP(w, r)
 	})
 }
@@ -149,8 +153,22 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) SubRouter(path string) *Router {
+
 	nwi := NewRouter()
 	nwi.prefix = rt.prefix + normalizePath(path)
+
 	rt.registerHandler(path, "ALL", nwi)
+
 	return nwi
+}
+
+func Vars(r *http.Request) map[string]string {
+	vs := map[string]string{}
+	ctx := r.Context()
+	keys, _ := ctx.Value("wireValKeys").([]string)
+	for _, k := range keys {
+		v, _ := ctx.Value(k).(string)
+		vs[k] = v
+	}
+	return vs
 }

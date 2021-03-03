@@ -2,6 +2,7 @@ package wire
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -86,25 +87,42 @@ func TestRoutingBasic(t *testing.T) {
 func TestRoutingRegex(t *testing.T) {
 
 	tts := []struct {
-		name   string
-		path   string
-		method string
-		want   int
+		name     string
+		path     string
+		method   string
+		wantCode int
+		wantVars string
 	}{
 		{
-			name:   "registered handler returns 200",
-			path:   "/",
-			method: http.MethodGet,
-			want:   http.StatusOK,
+			name:     "single regex on path works",
+			path:     "/test/1",
+			method:   http.MethodGet,
+			wantCode: http.StatusOK,
+			wantVars: "1 ",
+		},
+		{
+			name:     "multiple regex on path works",
+			path:     "/test/1/test/2",
+			method:   http.MethodGet,
+			wantCode: http.StatusOK,
+			wantVars: "1 2",
 		},
 	}
 
 	testF := func(w http.ResponseWriter, r *http.Request) {
+
+		vars := Vars(r)
+
+		id := vars["id"]
+		id2 := vars["id2"]
+
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(id + " " + id2))
 	}
 
 	r := NewRouter()
-	r.GetF("/", testF)
+	r.GetF("/test/(id:[0-9]+)", testF)
+	r.GetF("/test/(id:[0-9]+)/test/(id2:[0-9]+)", testF)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -115,15 +133,31 @@ func TestRoutingRegex(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assertStatusCode(t, res.StatusCode, tt.want)
+			b, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+
+			assertStatusCode(t, res.StatusCode, tt.wantCode)
+			assertPathVars(t, string(b), tt.wantVars)
 		})
 	}
 }
+
 func assertStatusCode(t testing.TB, got int, want int) {
 	t.Helper()
 
 	if want != got {
 		t.Errorf("got %d, want %d", got, want)
+	}
+}
+
+func assertPathVars(t testing.TB, got, want string) {
+	t.Helper()
+
+	if want != got {
+		t.Errorf("got %s, want %s", got, want)
 	}
 }
 
