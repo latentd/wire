@@ -145,6 +145,61 @@ func TestRoutingRegex(t *testing.T) {
 	}
 }
 
+func TestRoutingMiddleware(t *testing.T) {
+
+	tts := []struct {
+		name     string
+		path     string
+		method   string
+		wantCode int
+		wantVars string
+	}{
+		{
+			name:     "test middleware",
+			path:     "/test",
+			method:   http.MethodGet,
+			wantCode: http.StatusOK,
+			wantVars: "middleware\thandler",
+		},
+	}
+
+	testF := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("handler"))
+	}
+
+	m := func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("middleware\t"))
+			h.ServeHTTP(w, r)
+		})
+	}
+
+	r := NewRouter()
+	r.Chain(m)
+	r.GetF("/test", testF)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := doRequest(t, tt.method, srv.URL+tt.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+
+			assertStatusCode(t, res.StatusCode, tt.wantCode)
+			assertPathVars(t, string(b), tt.wantVars)
+		})
+	}
+}
+
 func assertStatusCode(t testing.TB, got int, want int) {
 	t.Helper()
 
