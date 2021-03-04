@@ -159,19 +159,19 @@ func TestRoutingMiddleware(t *testing.T) {
 			path:     "/test",
 			method:   http.MethodGet,
 			wantCode: http.StatusOK,
-			wantVars: "middleware\thandler",
+			wantVars: "handler\tmiddleware",
 		},
 	}
 
 	testF := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("handler"))
+		w.Write([]byte("handler\n"))
 	}
 
 	m := func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("middleware\t"))
 			h.ServeHTTP(w, r)
+			w.Write([]byte("middleware"))
 		})
 	}
 
