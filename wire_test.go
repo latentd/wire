@@ -165,7 +165,7 @@ func TestRoutingMiddleware(t *testing.T) {
 
 	testF := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("handler\n"))
+		w.Write([]byte("handler\t"))
 	}
 
 	m := func(h http.Handler) http.Handler {
